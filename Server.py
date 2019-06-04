@@ -1,77 +1,95 @@
+import sys
 import socket
 import logging
 from ctypes import *
+import xml.etree.ElementTree as ET
 
-class payload_t(Structure):
-    _fields_ = [("s_number", c_uint), #the header of the message type : int 
-                ("text", c_char_p)] # the body of the message type : string
+""" This class defines a C-like struct """
+class Payload(Structure):
+    _fields_ = [("id", c_uint32),
+                ("counter", c_uint32),
+                ("opcode", c_uint32)]
 
-def logger(): # new logging object 
+
+def logger():  # new logging object
     global logger
-    logging.basicConfig(filename = 'Server_Record.log',level=logging.INFO)
+    logging.basicConfig(filename='Server_Record2.log', level=logging.INFO)
     logger = logging.getLogger()
-    
 
 def create_socket():
-    logger()
-    try : 
+    tree = ET.parse('config.xml')
+    root = tree.getroot()
+
+    try:
         global logger
         global host
         global port
         global s
-        host = '127.0.0.1' #local network ip
-        port = 12345
-        s = socket.socket()
+        host = root[0].text  # local network ip
+        port = int(root[1].text)
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
         logger.info("New socket has been created")
-    
-    except socket.error as error: # If something goes wrong with creating new socket
+        print('Starting up on {} port {}'.format(host,port))
+        return s
+
+    except socket.error as error:  # If something goes wrong with creating new socket
         logger.error("socket creation error" + error)
 
+
 def bind_socket():
+
     try:
         global host
         global port
-        s.bind((host,port)) # binding host & port
+        s.bind((host, port))  # binding host & port
         logger.info("binding the port : " + str(port))
-        s.listen(5) # queue of five client allowed
-    
+        print("binding the port : " + str(port))
+        s.listen(5)  # queue of five client allowed
+
     except socket.error as error:  # If something goes wrong with binding
         logger.error("socket binding error : " + error)
-        
-    
-def socket_accept():
-    
-    conn, addr = s.accept()
-    logger.info("connection has been established | IP " + addr[0] + " Port :" + addr[1])
-    send_socket(conn)
-    conn.close()
-    
-    
 
-def send_socket(conn):
+def recv():
+    msg = Payload(0, 0, 0)
 
-    while True:
-        data = conn.recv(1024)
-        id = data.S_number
-        if id % 2 == 0: # save all even numbers in a bin file
-            export(id)
-        
-        client_respond = str(data.text,'utf-8') #this is the message that sent by client
-        print(client_respond, end="")
-        if not data:
-            break
-        
-        conn.sendall(data)
-          
-        logging.info("Connection has been closed ")
+    while(1):
+        print('waiting for a connection..')
+        conn, addr = s.accept()
+        print("connection has been established | " + repr(addr))
+        logger.info("connection has been established | " + repr(addr))
+        while conn:
+            buff = conn.recv(sizeof(msg))
 
-def export(number):
-        with open('Evennumber.bin', 'a+b') as file:
-            file.write(number.encode())
-    
+            print("recv %d bytes" % sizeof(msg))
+            payload_in = Payload.from_buffer_copy(buff)
+            opcode = payload_in.opcode
+
+            if opcode == 1 :
+                logger.info("Opcode Number 1 recive")
+
+            elif  opcode == 2 :
+                payload_in.counter = payload_in.counter + 1
+            else:
+                logger.info("Unexpected opcode %d"  %opcode)
+
+
+            print("Received id=%d, counter=%d, opcode=%d" % (payload_in.id,
+                                                           payload_in.counter,
+                                                           payload_in.opcode))
+
+            nsent = conn.send(payload_in)
+
+    print("Closing connection to client")
+    print("----------------------------")
+    ssock.close()
+
+
 def main():
+    global s
+    logger()
     create_socket()
     bind_socket()
-    socket_accept()
-    
+    recv()
+
 main()
