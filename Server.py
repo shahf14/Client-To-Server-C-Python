@@ -66,7 +66,7 @@ def recv():
             opcode = payload_in.opcode
 
             if opcode == 1 :
-                logger.info("Opcode Number 1 recive")
+                export(opcode)
 
             elif  opcode == 2 :
                 payload_in.counter = payload_in.counter + 1
@@ -84,6 +84,9 @@ def recv():
     print("----------------------------")
     ssock.close()
 
+def export(opcode):
+    with open('opcode.bin', 'a+b') as file:
+            file.write(opcode.encode())
 
 def main():
     global s
