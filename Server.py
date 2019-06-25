@@ -3,6 +3,10 @@ import socket
 import logging
 from ctypes import *
 import xml.etree.ElementTree as ET
+from PyQt5 import QtCore
+from PyQt5.QtWidgets import QLabel,QDialogButtonBox, QApplication, QWidget, QPushButton, QHBoxLayout, QGroupBox, QDialog, QVBoxLayout,QGridLayout ,QApplication
+from PyQt5.QtWidgets import QMainWindow, QApplication, QWidget, QAction, QTableWidget, QTableWidgetItem, QVBoxLayout
+from PyQt5.QtWidgets import QTableWidget,QTableWidgetItem
 
 """ This class defines a C-like struct """
 class Payload(Structure):
@@ -50,49 +54,143 @@ def bind_socket():
     except socket.error as error:  # If something goes wrong with binding
         logger.error("socket binding error : " + error)
 
-def recv():
-    msg = Payload(0, 0, 0)
-
-    while(1):
-        print('waiting for a connection..')
-        conn, addr = s.accept()
-        print("connection has been established | " + repr(addr))
-        logger.info("connection has been established | " + repr(addr))
-        while conn:
-            buff = conn.recv(sizeof(msg))
-
-            print("recv %d bytes" % sizeof(msg))
-            payload_in = Payload.from_buffer_copy(buff)
-            opcode = payload_in.opcode
-
-            if opcode == 1 :
-                export(opcode)
-
-            elif  opcode == 2 :
-                payload_in.counter = payload_in.counter + 1
-            else:
-                logger.info("Unexpected opcode %d"  %opcode)
 
 
-            print("Received id=%d, counter=%d, opcode=%d" % (payload_in.id,
-                                                           payload_in.counter,
-                                                           payload_in.opcode))
+# def export(opcode):
+#     with open('opcode.bin', 'a+b') as file:
+#             file.write(opcode.encode())
 
-            nsent = conn.send(payload_in)
 
-    print("Closing connection to client")
-    print("----------------------------")
-    ssock.close()
+class App(QWidget):
+    global table1
+    global table2
 
-def export(opcode):
-    with open('opcode.bin', 'a+b') as file:
-            file.write(opcode.encode())
+    def __init__(self, parent=None):
+        super(QWidget, self).__init__(parent=parent)
+        global table1
+        global table2
+        QTableWidget.setMinimumSize(self, 1000, 500)
+        QTableWidget.setWindowTitle(self, "Server Massages")
+        self.table1 = QTableWidget()
+        self.configureTable(self.table1)
+        table1 = self.table1
+        label = QLabel('Income', self)
+        label.move(235, 0)
+
+        self.table2 = QTableWidget()
+        self.configureTable(self.table2)
+        table2 = self.table2
+        label = QLabel('Outcome', self)
+        label.move(725, 0)
+
+        self.buttonBox = QDialogButtonBox(self)
+        self.buttonBox.setOrientation(QtCore.Qt.Horizontal)
+        self.buttonBox.setStandardButtons(QDialogButtonBox.Cancel | QDialogButtonBox.Ok)
+
+        self.verticalLayout = QVBoxLayout(self)
+
+        self.horizontalLayout = QHBoxLayout()
+        self.horizontalLayout.addWidget(self.table1)
+        self.horizontalLayout.addWidget(self.table2)
+        self.horizontalLayout.setContentsMargins(0,20,0,0)
+
+        self.verticalLayout.addLayout(self.horizontalLayout)
+        self.verticalLayout.addWidget(self.buttonBox)
+
+        self.buttonBox.accepted.connect(self.close)
+        self.buttonBox.rejected.connect(self.close)
+
+
+    def configureTable(self, table):
+
+        rowf = 3
+        table.setColumnCount(2)
+        table.setRowCount(rowf)
+        table.setHorizontalHeaderItem(0, QTableWidgetItem("Parameters"))
+        table.setHorizontalHeaderItem(1, QTableWidgetItem("Values"))
+
+        table.setItem(0, 0, QTableWidgetItem("id"))
+        table.setItem(1, 0, QTableWidgetItem("counter"))
+        table.setItem(2, 0, QTableWidgetItem("opcode"))
+
+        table.horizontalHeader().setStretchLastSection(True)
+
+
+    def recv(self):
+
+        msg = Payload(0, 0, 0)
+        while (1):
+            global table1
+            global table2
+
+            print('waiting for a connection..')
+            conn, addr = s.accept()
+            print("connection has been established | " + repr(addr))
+            logger.info("connection has been established | " + repr(addr))
+
+
+            while conn:
+
+                buff = conn.recv(sizeof(msg))
+
+                print("recv %d bytes" % sizeof(msg))
+                payload_in = Payload.from_buffer_copy(buff)
+
+                print("Received id=%d, counter=%d, opcode=%d" % (payload_in.id,
+                                                                 payload_in.counter,
+                                                                 payload_in.opcode))
+
+                payload_out = payload_in
+
+                opcode = payload_in.opcode
+
+                # if opcode == 1 :
+                # export(opcode)
+
+                # el
+                if opcode == 2:
+                    payload_out.counter += 1
+                else:
+                    logger.info("Unexpected opcode %d" % opcode)
+
+
+                nsent = conn.send(payload_out)
+                print("send %d bytes" % nsent)
+                print("send id=%d, counter=%d, opcode=%d" % (payload_out.id,
+                                                             payload_out.counter,
+                                                             payload_out.opcode))
+
+
+
+                self.insertValues(table1, payload_in)
+                self.insertValues(table2, payload_out)
+                self.show()
+
+                # app.exec_()
+
+        # sys.exit(app.exec_())
+        print("Closing connection to client")
+        print("----------------------------")
+        ssock.close()
+
+    def insertValues (self, table, payload):
+
+        table.setItem(0, 1, QTableWidgetItem(str(payload.id)))
+        table.setItem(1, 1, QTableWidgetItem(str(payload.counter)))
+        table.setItem(2, 1, QTableWidgetItem(str(payload.opcode)))
+
+
+
 
 def main():
     global s
     logger()
     create_socket()
     bind_socket()
-    recv()
+    app = QApplication(sys.argv)
+    ex = App()
+    ex.recv()
+    sys.exit(app.exec_())
+
 
 main()
