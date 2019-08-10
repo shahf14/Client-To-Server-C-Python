@@ -17,7 +17,6 @@
 #include <iostream>
 #include <winsock2.h>
 #include <chrono>
-#include <thread>
 #include<string>
 
 #pragma comment(lib, "Ws2_32.lib")
@@ -26,7 +25,7 @@
 
 #pragma pack(1)
 
-typedef struct payload_t {
+typedef struct message {
 	uint32_t id;
 	uint32_t counter;
 	uint32_t opcode;
@@ -37,67 +36,80 @@ typedef struct payload_t {
 
 int main()
 {
-	int PORT = 12345;
-	int BUFFSIZE = 512;
-	char buff[512];
-	int ssock, csock;
-	int nread;
 
 	WSADATA WSAData;
-	SOCKET server;
+	SOCKET UDP_socket;
 	SOCKADDR_IN addr;
 
-	WSAStartup(MAKEWORD(2, 0), &WSAData);
-	ssock = socket(AF_INET, SOCK_STREAM, 0);
+
+
+	// initialize socket 
+	int PORT = 12345; 
+	char buff[1024];
+	int nread;
+
+	// local variable
+	int i = 0 ; // this will use by counter to increase by one. 
+	const int TIME_TO_SLEEP = 1;
+
+	
+
+	if(WSAStartup(MAKEWORD(2, 0), &WSAData) != 0) {
+		return -1;
+	}
+	
+
+	UDP_socket = socket(AF_INET, SOCK_DGRAM, 0);
+
+	if (UDP_socket == INVALID_SOCKET){
+		printf("Create a new socket failed!");
+		return -1;
+	}
+	printf("New socket has been created!");
+
 
 	addr.sin_addr.s_addr = inet_addr("127.0.0.1"); // local ip
 	addr.sin_family = AF_INET; // IPV4
-	addr.sin_port = htons(12345); // Port number 12345
+	addr.sin_port = htons(PORT); // Port number 12345
 
 	//connect(server, (SOCKADDR*)& addr, sizeof(addr));
+	std::chrono::seconds interval(TIME_TO_SLEEP); // define the number of 
 
-
-
-
-	while (1) {
-		csock = connect(ssock, (SOCKADDR*)& addr, sizeof(addr));;
-
+	while (true) {
+		
+		connect(UDP_socket, (SOCKADDR*)& addr, sizeof(addr));
 		printf("connect to %s\n", inet_ntoa(addr.sin_addr));
-		memset(buff, 0, BUFFSIZE);
+		memset(buff, 0, 1024); //initial buffer with zeros
 
-		int i = 0;
-		while (true){
-			std::chrono::seconds interval(3);
+		while (true) {
 
 			payload* p = (payload*)buff;
 
 			p->counter = i;
 			i++;
 			p->id = 1;
-			std::cout << "enter Opcode : ";
-			std::cin >> p->opcode;
+			//std::cout << "enter Opcode : ";
+			//std::cin >> p->opcode;
+			p->opcode = i * 5;
 
-			nread=send(ssock, buff, sizeof(payload), 0);
-			printf("send: id=%d, counter=%d, counter=%d\n",
-				p->id, p->counter, p->opcode);
+			nread = send(UDP_socket, buff, sizeof(message), 0);
+			printf("send: id=%d, counter=%d, counter=%d\n",p->id, p->counter, p->opcode);
 			printf("\nReceived %d bytes\n", nread);
 
-			//sendMsg(csock, p, sizeof(payload));
-			if((nread = recv(ssock, buff, BUFFSIZE, 0)) > 0)
+			if ((nread = recv(UDP_socket, buff, 1024, 0)) > 0)
 				printf("Received: id=%d, counter=%d, opcode=%d\n",
-				p->id, p->counter, p->opcode);
-				printf("\nReceived %d bytes\n", nread);
+					p->id, p->counter, p->opcode);
+			printf("\nReceived %d bytes\n", nread);
 
 
-		std::this_thread::sleep_for(interval); // wait 3 seconds
+			std::this_thread::sleep_for(interval); // wait 3 seconds
 
 		}
 
 		printf("Closing connection to client\n");
-		printf("----------------------------\n");
+
 		WSACleanup();
 		//	close(csock);
-		break;
 
 	}
 	exit(0);
