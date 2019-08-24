@@ -1,6 +1,7 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QApplication, QDialog, QHBoxLayout, QVBoxLayout , QTableWidgetItem
 import sys
+import xml.etree.ElementTree as ET
 from message import *
 
 
@@ -14,7 +15,12 @@ class GUI(QDialog):
         self._translate = QtCore.QCoreApplication.translate
         self.resize(1050, 580)
 
-        self.columns = 3
+        self.icd = ET.parse('ICD.xml')
+        self.root = self.icd.getroot()
+
+        # we create number of columns by the number of xml Header element without income-outcome element.
+
+        self.columns = len(self.root[0]) - 1
 
         self.income_rows = 10
         self.outcome_rows = 6
@@ -116,17 +122,24 @@ class GUI(QDialog):
         self.income_table.setRowCount(self.income_rows)
         self.income_table.setColumnCount(self.columns)
 
+
         # New columns
-        self.income_table.setHorizontalHeaderItem(1, QtWidgets.QTableWidgetItem())
-        self.income_table.setHorizontalHeaderItem(0, QtWidgets.QTableWidgetItem())
-        self.income_table.setHorizontalHeaderItem(2, QtWidgets.QTableWidgetItem())
+        for i in range(self.columns):
+            self.income_table.setHorizontalHeaderItem(i, QtWidgets.QTableWidgetItem())
+
 
         # Column headers
         self.GroupBox_income.setWindowTitle("Income Messages")
-        self.income_table.horizontalHeaderItem(0).setText("Message ID")
-        self.income_table.horizontalHeaderItem(1).setText("Counter")
-        self.income_table.horizontalHeaderItem(2).setText("Opcode")
 
+
+    # read columns names from ICD file
+        for header in self.icd.iter('header'):
+            j = 0
+            for element in header:
+                column_name = element.get('name')
+                if(column_name != "income-outcome"):
+                     self.income_table.horizontalHeaderItem(j).setText(column_name)
+                     j += 1
         QtCore.QMetaObject.connectSlotsByName(self.GroupBox_income)
 
         self.outcome_table.viewport().setProperty("cursor", QtGui.QCursor(QtCore.Qt.SizeVerCursor))
@@ -136,15 +149,20 @@ class GUI(QDialog):
         self.outcome_table.setColumnCount(self.columns)
 
         # New columns
-        self.outcome_table.setHorizontalHeaderItem(1, QtWidgets.QTableWidgetItem())
-        self.outcome_table.setHorizontalHeaderItem(0, QtWidgets.QTableWidgetItem())
-        self.outcome_table.setHorizontalHeaderItem(2, QtWidgets.QTableWidgetItem())
+        for i in range(self.columns):
+            self.outcome_table.setHorizontalHeaderItem(i, QtWidgets.QTableWidgetItem())
+
 
         # Column headers
-        self.GroupBox_outcome.setWindowTitle("Income Messages")
-        self.outcome_table.horizontalHeaderItem(0).setText("Message ID")
-        self.outcome_table.horizontalHeaderItem(1).setText("Counter")
-        self.outcome_table.horizontalHeaderItem(2).setText("Opcode")
+        self.GroupBox_outcome.setWindowTitle("Outcome Messages")
+
+        for header in self.icd.iter('header'):
+            j = 0
+            for element in header:
+                column_name = element.get('name')
+                if (column_name != "income-outcome"):
+                    self.outcome_table.horizontalHeaderItem(j).setText(column_name)
+                    j += 1
 
         QtCore.QMetaObject.connectSlotsByName(self.GroupBox_outcome)
 
