@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<message>
+
+<header>
+
+    <opcode type="short" name="opcode"></opcode>
+    <size type="short" name="size"></size>
+    <time type="long" name ="time"></time>
+    <counter type="int" name="counter"></counter>
+    <income-outcome name="income-outcome">income </income-outcome>
+
+</header>
+
+        <first_message opcode = "" >
+            <int_element type="int" name = "int_element" primitive="yes"></int_element>
+            <double_element type="double" name = "double_element" primitive="yes"></double_element>
+            <long_element  type="double" name = "double_element" primitive="yes"></long_element>
+            <char_element  type="double" name = "double_element" primitive="yes"></char_element>
+            <boolean_element type="boolean" name = "boolean_element" primitive="yes"></boolean_element>
+        </first_message>
+
+        <second_message opcode = "" >
+
+          <array_element type="array" valueType="short" size="10" primitive="no"></array_element>
+          <sound_element type="sound" name = "file_name" format="mp3" primitive="no"></sound_element>
+
+        </second_message>
+
+</message>
