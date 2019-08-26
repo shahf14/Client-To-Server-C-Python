@@ -1,23 +1,24 @@
 from PyQt5 import QtWidgets
 import GUI
 from message import *
+
+import logging
 import stopThreading
 import socket
 import threading
 import sys
 import xml.etree.ElementTree as ET
-import logging
 
 class Server_Logic(GUI.GUI):
     def __init__(self):
         super(Server_Logic, self).__init__()
 
+        logging.basicConfig(filename='Server_Record2.log', level=logging.INFO)
+        self.logger = logging.getLogger()
+
         self.UDP_socket = None
         self.address = None
         self.sever_thread = None
-
-        logging.basicConfig(filename='Server_Record2.log', level=logging.INFO)
-        self.logger = logging.getLogger()
 
     def udp_server_start(self):
         self.UDP_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -60,7 +61,6 @@ class Server_Logic(GUI.GUI):
             if buff:
                 sent = self.UDP_socket.sendto(income_message,address)
 
-            msg = str(income_message.opcode)
             self.signal_update.emit(income_message)
 
 

@@ -1,32 +1,34 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QApplication, QDialog, QHBoxLayout, QVBoxLayout , QTableWidgetItem
 import sys
-import xml.etree.ElementTree as ET
-from message import *
-
+import message
+import copy
+from app_logic import *
+from icd import *
 
 class GUI(QDialog):
 
     signal_update = QtCore.pyqtSignal(message)
+
 
     def __init__(self):
 
         super(GUI, self).__init__()
         self._translate = QtCore.QCoreApplication.translate
         self.resize(1050, 580)
+        self.icd = icd()
 
-        self.icd = ET.parse('ICD.xml')
-        self.root = self.icd.getroot()
-
-        # we create number of columns by the number of xml Header element without income-outcome element.
-
-        self.columns = len(self.root[0]) - 1
+        self.headers = self.icd.get_number_of_headers()
 
         self.income_rows = 10
         self.outcome_rows = 6
 
         self.current_income_row = 0
         self.current_outcome_row = 0
+
+        # message containers
+        self.income_msg = message()
+        self.outcome_msg = message()
 
         # Buttons
         self.pushButton_get_ip = QtWidgets.QPushButton()
@@ -84,6 +86,8 @@ class GUI(QDialog):
         self.set_names()
         self.connect()
 
+
+
     def layout_ui(self):
 
         # IP box
@@ -118,51 +122,58 @@ class GUI(QDialog):
         self.v_box_left.addLayout(self.v_box_send)
         self.v_box_left.addLayout(self.h_box_exit)
 
-        # Set rows and columns
+        # read income columns name from icd file
+        self.column_incomeMSG = self.icd.read_income_messages()
+        self.columns_names = self.icd.read_headers()
+        self.column_incomeMSG.extend(self.columns_names)
+        self.column_incomeMSG = list(reversed((self.column_incomeMSG)))
+
+        # read outcome columns name from icd file
+        self.column_outcomeMSG = self.icd.read_outcome_messages()
+        self.columns_names = self.icd.read_headers()
+        self.column_outcomeMSG.extend(self.columns_names)
+        self.column_outcomeMSG = list(reversed((self.column_outcomeMSG)))
+
+
+        # Set rows and headers
+
         self.income_table.setRowCount(self.income_rows)
-        self.income_table.setColumnCount(self.columns)
+        self.income_table.setColumnCount(len(self.column_incomeMSG))
 
+        # create new income headers
+        column_incomeMSG = self.icd.read_income_messages()
 
-        # New columns
-        for i in range(self.columns):
+        self.columns_names = self.icd.read_headers()
+        column_incomeMSG.extend(self.columns_names)
+        print(column_incomeMSG)
+        column_outcomeMSG = self.icd.read_outcome_messages()
+
+        for i in range(len(self.column_incomeMSG)):
             self.income_table.setHorizontalHeaderItem(i, QtWidgets.QTableWidgetItem())
-
 
         # Column headers
         self.GroupBox_income.setWindowTitle("Income Messages")
 
+        # set headers names from ICD file
+        for name,index in zip(self.column_incomeMSG, range(len(self.column_incomeMSG))):
+                self.income_table.horizontalHeaderItem(index).setText(name)
 
-    # read columns names from ICD file
-        for header in self.icd.iter('header'):
-            j = 0
-            for element in header:
-                column_name = element.get('name')
-                if(column_name != "income-outcome"):
-                     self.income_table.horizontalHeaderItem(j).setText(column_name)
-                     j += 1
+
         QtCore.QMetaObject.connectSlotsByName(self.GroupBox_income)
 
         self.outcome_table.viewport().setProperty("cursor", QtGui.QCursor(QtCore.Qt.SizeVerCursor))
 
-        # Set rows and columns
+        # Set rows and headers
         self.outcome_table.setRowCount(self.outcome_rows)
-        self.outcome_table.setColumnCount(self.columns)
+        self.outcome_table.setColumnCount(len(self.column_outcomeMSG))
 
-        # New columns
-        for i in range(self.columns):
+        # New headers
+        for i in range(len(self.column_outcomeMSG)):
             self.outcome_table.setHorizontalHeaderItem(i, QtWidgets.QTableWidgetItem())
 
-
         # Column headers
-        self.GroupBox_outcome.setWindowTitle("Outcome Messages")
-
-        for header in self.icd.iter('header'):
-            j = 0
-            for element in header:
-                column_name = element.get('name')
-                if (column_name != "income-outcome"):
-                    self.outcome_table.horizontalHeaderItem(j).setText(column_name)
-                    j += 1
+        for name, index in zip(self.column_outcomeMSG, range(len(self.column_outcomeMSG))):
+            self.outcome_table.horizontalHeaderItem(index).setText(name)
 
         QtCore.QMetaObject.connectSlotsByName(self.GroupBox_outcome)
 
@@ -195,20 +206,22 @@ class GUI(QDialog):
     def connect(self):
         self.signal_update.connect(self.update_income_table)
 
+    def update_income_table(self,msg):
+        self.income_msg = msg
+        self.outcome_msg = terms(copy.copy(msg))
+        print(self.outcome_msg.opcode)
 
-    def update_income_table(self, msg):
-        self.income_table.setItem(self.current_income_row,0, QTableWidgetItem(msg))
-        self.income_table.setItem(self.current_income_row,1, QTableWidgetItem(msg))
-        self.income_table.setItem(self.current_income_row,2, QTableWidgetItem(msg))
+        self.income_table.setItem(self.current_income_row,0, QTableWidgetItem(str(self.income_msg.id)))
+        self.income_table.setItem(self.current_income_row,1, QTableWidgetItem(str(self.income_msg.counter)))
+        self.income_table.setItem(self.current_income_row,2, QTableWidgetItem(str(self.income_msg.opcode)))
 
         self.current_income_row = ( self.current_income_row + 1 ) % self.income_rows
 
-        self.outcome_table.setItem(self.current_outcome_row, 0, QTableWidgetItem(msg))
-        self.outcome_table.setItem(self.current_outcome_row, 1, QTableWidgetItem(msg))
-        self.outcome_table.setItem(self.current_outcome_row, 2, QTableWidgetItem(msg))
+        self.outcome_table.setItem(self.current_outcome_row, 0, QTableWidgetItem(str(self.outcome_msg.id)))
+        self.outcome_table.setItem(self.current_outcome_row, 1, QTableWidgetItem(str(self.outcome_msg.counter)))
+        self.outcome_table.setItem(self.current_outcome_row, 2, QTableWidgetItem(str(self.outcome_msg.opcode)))
 
         self.current_outcome_row = (self.current_outcome_row + 1) % self.outcome_rows
-
 
 
     def update_outcome_table(self, message):
@@ -221,9 +234,25 @@ class GUI(QDialog):
     def closeEvent(self, event):
         self.close_all()
 
+    # Back up the reference to the exceptionhook
+    sys._excepthook = sys.excepthook
+
+    def my_exception_hook(exctype, value, traceback):
+        # Print the error and traceback
+        print(exctype, value, traceback)
+        # Call the normal Exception hook after
+        sys._excepthook(exctype, value, traceback)
+        sys.exit(1)
+
+    # Set the exception hook to our wrapping function
+    sys.excepthook = my_exception_hook
+
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     ui = GUI()
     ui.show()
-    sys.exit(app.exec_())
+    try:
+        sys.exit(app.exec_())
+    except:
+        print("Exiting")

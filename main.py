@@ -1,7 +1,6 @@
 from PyQt5 import QtWidgets
 import server_logic
 import socket
-import message
 import sys
 
 class MainWindow(server_logic.Server_Logic):

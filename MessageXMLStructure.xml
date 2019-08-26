@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Structure>
+<header>
+  <opcode type="c_short" name="opcode"></opcode>
+  <size type="c_short" name="size"></size>
+  <counter type="c_uint" name="counter"></counter>
+  <time type="long" name="time"></time>
+  <temp type="c_char" name="temp"></temp>
+
+
+</header>
+    <income>
+        <message opcode = "1">
+            <x name="x" type="c_uint"></x>
+            <y name="y" type="c_uint"></y>
+            <z name="z" type="c_uint"></z>
+        </message>
+
+        <message opcode = "2">
+            <a  name="a" type="array" arrayValuesType="c_short" size="10"></a>
+            <b  name="b" type="array" arrayValuesType="c_double" size="5"></b>
+            <c  name="c" type="float"></c>
+        </message>
+    </income>
+
+    <outcome>
+    <message opcode = "">
+            <a name="a" type="c_uint"></a>
+            <b name="b" type="c_uint"></b>
+            <c name="c" type="c_char"></c>
+        </message>
+
+        <message opcode = "">
+            <d name="d" type="array" arrayValuesType="c_short" size="10"></d>
+            <e name="e" type="c_float"></e>
+            <k name="k" type="c_uint"></k>
+            <l name="l" type="array" valueType="c_double" size="5"></l>
+        </message>
+    </outcome>
+</Structure>
